@@ -1,23 +1,47 @@
-import Pulse
-import jax.numpy as np
-
+import numpy as np
+from ParaTune.light.Pulse import Pulse
+from typing import Callable
 
 class GaussianPulse(Pulse):
-    def __init__(self, n, temp_span, 
-                 power, wl_central, temp_BW, 
-                 frep = 60*1e6, power_is_avg = False):
-        
-        Pulse.__init__(self, n, temp_span=temp_span, wl_central=wl_central, temp_BW=temp_BW)
-        self.set_temp_grid()
-        self.set_temp_step()
-        
-        # from https://www.rp-photonics.com/gaussian_pulses.html
-        self.temp_amp = np.sqrt(power) * np.exp(-2.77*0.5*self.temp_grid**2/(self.temp_BW**2)) # input field (W^0.5)
-        if power_is_avg:            
-            self.temp_amp = self.temp_amp * np.sqrt( power / ( frep * self.calulate_energy_per_pulse()) )
-        
-        self.update_freq_parameters()
-        self.update_wl_parameters()
+    """
+    Represents a Gaussian optical pulse, characterized by a Gaussian-shaped amplitude
+    in both the frequency and time domains.
 
-        def transform_limited_pulse_BW(self, pulse_duration):
-            return 0.44/pulse_duration
+    Attributes:
+        wavelength_central (float): Central wavelength of the Gaussian pulse in meters.
+        wavelength_bandwidth (float): Spectral bandwidth of the Gaussian pulse in meters.
+        mean_power (float): Average power of the Gaussian pulse in Watts.
+        repetition_rate (float): Repetition rate of the Gaussian pulse in Hertz.
+        number_of_grid_points (int): Number of grid points for numerical simulations.
+        wavelength_span (float): Total span of wavelengths to consider in meters.
+        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of wavelength.
+    """
+
+    def __init__(self, wavelength_central: float, wavelength_bandwidth: float, mean_power: float, repetition_rate: float, number_of_grid_points: int, wavelength_span: float, refractive_index_function: Callable[[float], float]) -> None:
+        super().__init__(wavelength_central, wavelength_bandwidth, mean_power, repetition_rate, number_of_grid_points, wavelength_span, refractive_index_function)
+
+    @property
+    def wavelength_amplitude(self) -> np.ndarray:
+        """
+        Calculates the amplitude of the Gaussian pulse as a function of wavelength.
+
+        Returns:
+            np.ndarray: Array of complex numbers representing the amplitude of the Gaussian pulse across the wavelength grid.
+        """
+        wavelength_amplitude = np.zeros_like(self.wavelength_grid, dtype=complex)
+        amplitude = np.sqrt(self.average_photons_per_pulse) if self.power_is_avg else np.sqrt(self.mean_power)
+        central_omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_central)
+        bandwidth_omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_bandwidth)
+        omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_grid)
+        wavelength_amplitude += amplitude * np.exp(-((omega - central_omega) ** 2) / (2 * bandwidth_omega ** 2))
+        return wavelength_amplitude
+
+    @property
+    def time_bandwidth(self) -> float:
+        """
+        Calculates the time-bandwidth product of the Gaussian pulse.
+
+        Returns:
+            float: The time-bandwidth product of the Gaussian pulse.
+        """
+        return 0.44 * self.temp_span / (2 * np.pi * self.frequency_bandwidth)

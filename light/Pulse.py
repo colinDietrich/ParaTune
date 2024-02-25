@@ -2,11 +2,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from scipy.constants import h, c
 from typing import Callable
-
-from abc import ABC, abstractmethod
-import numpy as np
 from scipy.interpolate import interp1d
-from typing import Optional
 
 class Pulse(ABC):
     """
@@ -36,7 +32,7 @@ class Pulse(ABC):
 
         Parameters:
             wavelength_central (float): Central wavelength of the pulse in meters.
-            wavelength_bandwidth (float): Spectral bandwidth of the pulse in meters.
+            wavelength_bandwidth (float): Spectral bandwidth of the pulse in meters (standard deviation).
             mean_power (float): Average power of the pulse in Watts.
             repetition_rate (float): Repetition rate of the pulse in Hertz.
             number_of_grid_points (int): Number of grid points for numerical simulations.
