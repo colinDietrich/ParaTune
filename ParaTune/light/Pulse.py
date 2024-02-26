@@ -57,11 +57,12 @@ class Pulse(ABC):
         self.refractive_index_function = refractive_index_function
 
         # frequency parameters
-        self._frequency_central = self.convert_wavelength_to_frequency(self.central_wavelength)  # central frequency [Hz]
+        self._frequency_central = self.convert_wavelength_to_frequency(self.wavelength_central)  # central frequency [Hz]
         self._frequency_bandwidth = self.get_frequency_bandwidth() # spectral bandwidth of the pulse [Hz]
         self._frequency_grid, self._frequency_amplitude = self.wavelength_to_frequency_grid(
                                                                 self.wavelength_grid, 
                                                                 self.wavelength_amplitude) # frequency grid / amplitude
+        
         # temporal parameters
         self._time_grid, self._time_amplitude = self.get_time_amplitude() # time grid / amplitude
 
@@ -123,7 +124,7 @@ class Pulse(ABC):
         return self._frequency_bandwidth
     
     @property
-    def frequency_grid(self) -> np.ndarray[float]:
+    def frequency_grid(self) -> np.ndarray[complex]:
         return self._frequency_grid
     
     @property
@@ -180,28 +181,27 @@ class Pulse(ABC):
         self.update_wavelength_and_time_parameters()
         self._frequency_central = new_frequency_central
     
-    @repetition_rate.setter 
+    @frequency_bandwidth.setter 
     def frequency_bandwidth(self, new_frequency_bandwidth: float) -> None:
         # update frequency and time parameters
         self.update_wavelength_and_time_parameters()
         self._frequency_bandwidth = new_frequency_bandwidth
     
-    @repetition_rate.setter
+    @frequency_grid.setter
     def frequency_grid(self, new_frequency_grid: np.ndarray[float]) -> None:
         # update frequency and time parameters
         self.update_wavelength_and_time_parameters()
         self._frequency_grid = new_frequency_grid
     
-    @repetition_rate.setter
+    @frequency_amplitude.setter
     def frequency_amplitude(self, new_frequency_amplitude: np.ndarray[float]) -> None:
         # update frequency and time parameters
         self.update_wavelength_and_time_parameters()
         self._frequency_amplitude = new_frequency_amplitude
     
-    @staticmethod
     def update_frequency_and_time_parameters(self) -> None:
         # frequency parameters
-        self._frequency_central = self.convert_wavelength_to_frequency(self.central_wavelength)  # central frequency [Hz]
+        self._frequency_central = self.convert_wavelength_to_frequency(self.wavelength_central)  # central frequency [Hz]
         self._frequency_bandwidth = self.get_frequency_bandwidth() # spectral bandwidth of the pulse [Hz]
         self._frequency_grid, self._frequency_amplitude = self.wavelength_to_frequency_grid(
                                                                 self.wavelength_grid, 
@@ -209,7 +209,6 @@ class Pulse(ABC):
         # temporal parameters
         self._time_grid, self._time_amplitude = self.get_time_amplitude() # time grid / amplitude
 
-    @staticmethod
     def update_wavelength_and_time_parameters(self) -> None:
         # wavelength parameters
         self._wavelength_grid, self._wavelength_amplitude = self.frequency_to_wavelength_grid(
@@ -218,7 +217,6 @@ class Pulse(ABC):
         # temporal parameters
         self._time_grid, self._time_amplitude = self.get_time_amplitude() # time grid / amplitude
 
-    @staticmethod
     def convert_wavelength_to_frequency(self, wavelength: float) -> float:
         """
         Converts a given wavelength to frequency using the light speed in vacuum and the refractive index.
@@ -231,7 +229,6 @@ class Pulse(ABC):
         """
         return c / (self.refractive_index_function(wavelength) * wavelength)
     
-    @staticmethod
     def convert_frequency_to_wavelength(self, frequency: float) -> float:
         """
         Converts a given frequency to its corresponding wavelength in a medium,
@@ -245,7 +242,6 @@ class Pulse(ABC):
         """
         return c / (self.refractive_index_function(c / frequency) * frequency)
     
-    @staticmethod
     def get_frequency_bandwidth(self) -> float:
         """
         Calculates the spectral bandwidth of the pulse in the frequency domain,
@@ -256,16 +252,15 @@ class Pulse(ABC):
         """
         # Numerically approximate the derivative of the refractive index function
         delta_lambda = 1e-9  # small change in wavelength, in meters
-        n_lambda = self.refractive_index_function(self.central_wavelength)
-        n_lambda_delta = self.refractive_index_function(self.central_wavelength + delta_lambda)
+        n_lambda = self.refractive_index_function(self.wavelength_central)
+        n_lambda_delta = self.refractive_index_function(self.wavelength_central + delta_lambda)
         dn_dlambda = (n_lambda_delta - n_lambda) / delta_lambda
 
         # Calculate the frequency bandwidth using the given formula
-        return abs(-self.c / self.central_wavelength**2 * 
-                                  1 / (n_lambda + self.central_wavelength * dn_dlambda) * 
+        return abs(-c / self.wavelength_central**2 * 
+                                  1 / (n_lambda + self.wavelength_central * dn_dlambda) * 
                                   self.wavelength_bandwidth)
     
-    @staticmethod
     def wavelength_to_frequency_grid(self, 
                                      wavelength_grid: np.ndarray[float], 
                                      wavelength_amplitude: np.ndarray[float], 
@@ -281,20 +276,18 @@ class Pulse(ABC):
         Returns:
             tuple[np.ndarray[float], np.ndarray[complex]]: The frequency grid and corresponding amplitude values.
         """
-        frequency_grid = self.convert_wavelength_to_frequency(wavelength_grid)
-        frequency_amplitude = wavelength_amplitude[::-1]
+        frequency_grid = self.convert_wavelength_to_frequency(self.wavelength_grid)
+        frequency_amplitude = self.wavelength_amplitude
         f = interp1d(frequency_grid, frequency_amplitude, fill_value=(0, 0), bounds_error=False)
         # use interpolation function returned by `interp1d`
-        frequency_start = self.convert_wavelength_to_frequency(wavelength_grid[0])
-        frequency_end = self.convert_wavelength_to_frequency(wavelength_grid[-1])
+        frequency_start = frequency_grid[-1]
+        frequency_end = frequency_grid[0]
         frequency_grid_new = np.linspace(frequency_start, frequency_end, self.number_of_grid_points) # frequency grid [Hz]
         return frequency_grid_new, f(frequency_grid_new)
     
-    @staticmethod
     def frequency_to_wavelength_grid(self, 
                                      frequency_grid: np.ndarray[float], 
                                      frequency_amplitude: np.ndarray[float], 
-                                     wavelength_grid_new: np.ndarray[float],
                                      ) -> tuple[np.ndarray[float], np.ndarray[complex]]:
         """
         Converts a grid of frequencies and their corresponding amplitudes to a wavelength grid and amplitudes,
@@ -303,21 +296,19 @@ class Pulse(ABC):
         Parameters:
             frequency_grid (np.ndarray[float]): Array of frequency values.
             frequency_amplitude (np.ndarray[float]): Array of corresponding amplitude values.
-            wavelength_grid_new (np.ndarray[float]): The new wavelength grid to be populated.
 
         Returns:
             tuple[np.ndarray[float], np.ndarray[complex]]: The new wavelength grid and corresponding amplitude values.
         """
         wavelength_grid = self.convert_frequency_to_wavelength(frequency_grid)
-        wavelength_amplitude = frequency_amplitude[::-1]
+        wavelength_amplitude = self.frequency_amplitude
         f = interp1d(wavelength_grid, wavelength_amplitude, fill_value=(0, 0), bounds_error=False)
         # use interpolation function returned by `interp1d`
-        wavelength_start = self.convert_frequency_to_wavelength(frequency_grid[0])
-        wavelength_end = self.convert_frequency_to_wavelength(frequency_grid[-1])
+        wavelength_start = wavelength_grid[-1]
+        wavelength_end = wavelength_grid[0]
         wavelength_grid_new = np.linspace(wavelength_start, wavelength_end, self.number_of_grid_points) # frequency grid [Hz]
         return wavelength_grid_new, f(wavelength_grid_new)
     
-    @staticmethod
     def get_time_amplitude(self) -> tuple[np.ndarray[float], np.ndarray[complex]]:
         """
         Converts the pulse's spectral amplitude into the time domain using an inverse Fourier transform,
@@ -326,23 +317,19 @@ class Pulse(ABC):
         Returns:
             tuple[np.ndarray[float], np.ndarray[complex]]: Time grid and corresponding electric field amplitudes.
         """
-        frequency_grid, frequency_amplitude = self.wavelength_to_frequency_grid(
-                                                                self.wavelength_grid, 
-                                                                self.wavelength_amplitude)
         # Perform an inverse Fourier transform to get the time-domain signal
-        time_amplitude = np.fft.ifft(frequency_amplitude)
+        time_amplitude = np.fft.ifft(self.frequency_amplitude)
 
         # The frequencies array helps to set the correct time scale
         # Calculate time step (assuming frequencies are evenly spaced)
-        frequency_spacing = frequency_grid[1] - frequency_grid[0]
-        time_step = 1 / (len(frequency_grid) * frequency_spacing)
+        frequency_spacing = self.frequency_grid[1] - self.frequency_grid[0]
+        time_step = 1 / (len(self.frequency_grid) * frequency_spacing)
 
         # Generate time vector
-        time_grid = np.fft.fftfreq(len(frequency_grid), d=time_step)
+        time_grid = np.fft.fftfreq(len(self.frequency_grid), d=time_step)
 
         return time_grid, time_amplitude
 
-    @staticmethod
     def calculate_phase_shift(self,
                                optical_path_difference: float,
                                ) -> float:
@@ -358,7 +345,7 @@ class Pulse(ABC):
         """
         return (2 * np.pi / self.wavelength_central) * self.refractive_index_function(self.wavelength_central) * optical_path_difference
 
-    def distort_pulse_spectrum(self, distortion_function: Callable[[np.ndarray[complex]], np.ndarray[complex]]) -> np.ndarray[complex]:
+    def distort_pulse_spectrum(self, bandwidth_omega: float, distortion_function: Callable[[np.ndarray[complex]], np.ndarray[complex]]) -> np.ndarray[complex]:
         """
         Applies a spectral distortion to the pulse using a provided distortion function,
         which can modify the pulse's amplitude and/or phase within a specified bandwidth.
@@ -366,18 +353,18 @@ class Pulse(ABC):
         Parameters:
             distortion_function (Callable[[np.ndarray[complex]], np.ndarray[complex]]): 
                 Function that defines the spectral distortion to be applied.
+            bandwidth_omega float: bandwidth over wich distortion is applied
 
         Returns:
             np.ndarray[complex]: The distorted spectral amplitude of the pulse.
         """
-        central_omega = 2*np.pi * self._frequency_central
-        bandwidth_omega = 2*np.pi * self._frequency_bandwidth
+        central_omega = 2*np.pi * self.frequency_central
         omega = 2 * np.pi * self.frequency_grid
 
         # Apply distortion within the specified bandwidth
         return self.frequency_amplitude * distortion_function(omega, central_omega, bandwidth_omega)
 
-    def random_distortion(omega: np.ndarray[float], central_omega: float, bandwidth_omega: float, phase_variance: float=1, amplitude_variance: float=0.1) -> np.ndarray[complex]:
+    def random_distortion(self, omega: np.ndarray[float], central_omega: float, bandwidth_omega: float, phase_variance: float=1, amplitude_variance: float=0.1) -> np.ndarray[complex]:
         """
         Applies a random spectral distortion to the pulse within a specified bandwidth,
         characterized by random variations in amplitude and phase.
@@ -420,8 +407,8 @@ class Pulse(ABC):
         """
         
         # This is all to get the number of photons/second in each frequency bin:
-        size_of_bins = self.frequency_grid[1] - self.frequency_grid[0]                          # Bin width in [Hz]
-        power_per_bin = np.abs(self.frequency_amplitude)**2 / size_of_bins   # [J*Hz] / [Hz] = [J]
+        size_of_bins = self.frequency_grid[1] - self.frequency_grid[0] # Bin width in [Hz]
+        power_per_bin = np.abs(self.frequency_amplitude)**2 / size_of_bins # [J]
                     
         photon_energy = h * self.frequency_grid # h nu [J]
         photons_per_bin = power_per_bin/photon_energy # photons / second
@@ -434,7 +421,7 @@ class Pulse(ABC):
         
         noise = random_intensity * np.sqrt(photons_per_bin) * photon_energy * size_of_bins * np.exp(1j*random_phase)
         
-        return self.freq_amp + noise
+        return noise
 
 
     def apply_gdd_to_pulse(self, gdd_fs2: float) -> np.ndarray[complex]:

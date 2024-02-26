@@ -17,8 +17,22 @@ class GaussianPulse(Pulse):
         refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of wavelength.
     """
 
-    def __init__(self, wavelength_central: float, wavelength_bandwidth: float, mean_power: float, repetition_rate: float, number_of_grid_points: int, wavelength_span: float, refractive_index_function: Callable[[float], float]) -> None:
-        super().__init__(wavelength_central, wavelength_bandwidth, mean_power, repetition_rate, number_of_grid_points, wavelength_span, refractive_index_function)
+    def __init__(self, 
+                 wavelength_central: float, 
+                 wavelength_bandwidth: float, 
+                 mean_power: float, 
+                 repetition_rate: float, 
+                 number_of_grid_points: int, 
+                 wavelength_span: float, 
+                 refractive_index_function: Callable[[float], float]
+                 ) -> None:
+        super().__init__(wavelength_central, 
+                         wavelength_bandwidth, 
+                         mean_power, 
+                         repetition_rate, 
+                         number_of_grid_points, 
+                         wavelength_span, 
+                         refractive_index_function)
 
     @property
     def wavelength_amplitude(self) -> np.ndarray:
@@ -29,9 +43,9 @@ class GaussianPulse(Pulse):
             np.ndarray: Array of complex numbers representing the amplitude of the Gaussian pulse across the wavelength grid.
         """
         wavelength_amplitude = np.zeros_like(self.wavelength_grid, dtype=complex)
-        amplitude = np.sqrt(self.average_photons_per_pulse) if self.power_is_avg else np.sqrt(self.mean_power)
+        amplitude = np.sqrt(self.average_photons_per_pulse)
         central_omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_central)
-        bandwidth_omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_bandwidth)
+        bandwidth_omega = 2 * np.pi * self.get_frequency_bandwidth()
         omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_grid)
         wavelength_amplitude += amplitude * np.exp(-((omega - central_omega) ** 2) / (2 * bandwidth_omega ** 2))
         return wavelength_amplitude
@@ -44,4 +58,4 @@ class GaussianPulse(Pulse):
         Returns:
             float: The time-bandwidth product of the Gaussian pulse.
         """
-        return 0.44 * self.temp_span / (2 * np.pi * self.frequency_bandwidth)
+        return 0.44 / (2 * np.pi * self.frequency_bandwidth)

@@ -29,6 +29,8 @@ class DataPulse(Pulse):
                  refractive_index_function: Callable[[float], float],
                  file_name: str
                  ) -> None:
+        
+        self.file_name = file_name
     
         super().__init__(wavelength_central, 
                          wavelength_bandwidth, 
@@ -37,15 +39,11 @@ class DataPulse(Pulse):
                          number_of_grid_points, 
                          wavelength_span, 
                          refractive_index_function)
-        self.file_name = file_name
 
     @property
-    def wavelength_amplitude(self) -> np.ndarray:
+    def wavelength_amplitude(self) -> None:
         """
         Reads the experimental data from the CSV file and interpolates the amplitude values over the wavelength grid.
-
-        Returns:
-            np.ndarray: Array of amplitude values corresponding to the wavelength grid defined by the pulse parameters.
 
         Raises:
             ValueError: If the CSV file cannot be found or read properly.
@@ -58,9 +56,10 @@ class DataPulse(Pulse):
             raise ValueError(f"An error occurred while reading '{self.file_name}.csv': {e}")
 
         # Data from CSV file
-        wavelength_grid = np.array(df.iloc[:, 0])
+        wavelength_grid = np.array(df.iloc[:, 0])*1e-9
         amplitude_wavelength = np.array(df.iloc[:, 1])
 
         # Interpolate amplitude values to match the pulse's wavelength grid
         f = interp1d(wavelength_grid, amplitude_wavelength, fill_value=(0, 0), bounds_error=False)
+
         return f(self.wavelength_grid)
