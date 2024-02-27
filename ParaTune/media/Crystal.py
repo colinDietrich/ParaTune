@@ -264,3 +264,50 @@ class Crystal(ABC):
             Callable[[float], float]: Function that calculates the refractive index for a given frequency.
         """
         return lambda x: np.sqrt(A[0] + A[1]/((2*np.pi*c/x*1e6)**2 - A[2]) - A[3] * (2*np.pi*c/x*1e6)**2)
+    
+    def phase_matching_function(self, wave_number_span: float, wave_number_grid_points: int):
+        """
+        Calculates the phase matching function (PMF) for the crystal over a specified range of wave numbers.
+
+        The PMF is a crucial factor in nonlinear optical processes, indicating how well the phases of interacting
+        waves are matched over the length of the crystal. It is defined by the integral of the crystal's
+        nonlinear coefficient profile, modulated by the exponential of the negative product of the wave number 
+        mismatch and the position within the crystal.
+
+        Parameters:
+            wave_number_span (float): The range of wave numbers around the central mismatch to evaluate the PMF.
+            wave_number_grid_points (int): The number of points to discretize the wave number span for PMF calculation.
+
+        Returns:
+            wave_number_array (np.ndarray): An array of wave numbers over which the PMF is evaluated.
+            pmf (np.ndarray): The calculated phase matching function values corresponding to the wave_number_array.
+
+        Note:
+            The PMF is calculated for each domain of the crystal, and the contributions from all domains are
+            summed to obtain the total PMF. This function assumes a piecewise constant nonlinear coefficient profile
+            across the crystal's domains.
+        """
+        # Calculate the central phase mismatch based on the crystal's central angular frequency
+        wavevector_mismatch_central = self.wavevector_mismatch()(self.angular_frequency_central/2, self.angular_frequency_central/2)
+
+        # Generate an array of wave numbers around the central mismatch
+        wave_number_array = np.linspace(wavevector_mismatch_central - wave_number_span / 2,
+                                        wavevector_mismatch_central + wave_number_span / 2,
+                                        wave_number_grid_points)
+
+        # Define a lambda function to calculate the PMF contribution from a single domain
+        pmf_one_domain = lambda z1, z2: (1 / self.length) * 1j * \
+                        (np.exp(1j * wave_number_array * z1) - np.exp(1j * wave_number_array * z2)) / wave_number_array
+
+        # Initialize the total PMF to zero
+        pmf = 0
+
+        # Convert the domain values to a NumPy array for processing
+        parameters = np.array(self.poling_function(np.array(self.domain_values)), dtype=np.float32)[:len(self.z_grid)]
+
+        # Loop over each domain to calculate and sum its contribution to the total PMF
+        for idz in range(len(parameters) - 1):  # Subtract 1 to avoid index out of range since we're accessing idz+1
+            pmf += parameters[idz] * pmf_one_domain(self.z_grid[idz], self.z_grid[idz + 1])
+
+        # Return the array of wave numbers and the corresponding PMF values
+        return wave_number_array, pmf
