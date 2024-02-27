@@ -225,7 +225,7 @@ class Crystal:
         self.fill = np.ones(N_domains_alongs_z)
 
 
-    def fourier_series_coeff_numpy(self, domain_values: List[int], domain_bounds: List[float], z: np.ndarray) -> np.ndarray:
+    def fourier_series_coeff_numpy(self, domain_values: List[int]) -> np.ndarray:
         """
         Calculates the Fourier series coefficients for the domain structure of the crystal represented as a periodic function.
 
@@ -236,10 +236,6 @@ class Crystal:
         Parameters:
             domain_values (List[int]): A list of domain orientation values, indicating the direction of the
                                     electric field in each domain.
-            domain_bounds (List[float]): A list of positions marking the boundaries of each domain along the
-                                        crystal's length.
-            z (np.ndarray): The spatial grid along the z-axis of the crystal over which the domain structure
-                            is defined.
 
         Returns:
             np.ndarray: An array of Fourier series coefficients representing the frequency components of the
@@ -252,7 +248,7 @@ class Crystal:
             and N is the number of coefficients to compute.
     """
 
-        arr = np.array(self.poling_function(domain_values, domain_bounds, z))
+        arr = np.array(self.poling_function(domain_values))
         y = np.fft.fft(arr) / len(arr)
         return y
 
