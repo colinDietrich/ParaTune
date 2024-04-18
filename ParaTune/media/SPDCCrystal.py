@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List, Optional, Callable
-from scipy.constants import c
+from constants import c
 from ParaTune.media.Crystal import Crystal
 from ParaTune.media.data import *
 
