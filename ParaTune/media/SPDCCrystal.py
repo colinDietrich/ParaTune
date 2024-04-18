@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Optional
+from typing import List, Optional, Callable
 from scipy.constants import c
 from ParaTune.media.Crystal import Crystal
 from ParaTune.media.data import *
@@ -67,5 +67,5 @@ class SPDCCrystal(Crystal):
                         domain_values_custom,
                         domain_bounds_custom)
 
-    def wavevector_mismatch(self):
+    def wavevector_mismatch(self) -> Callable[[float, float], float]:
         return lambda ws, wi: self.k_s(ws)+self.k_i(wi)-self.k_p(ws+wi)
