@@ -15,7 +15,7 @@ class Pulse(ABC):
         repetition_rate (float): Repetition rate of the pulse in Hertz.
         number_of_grid_points (int): Number of grid points for numerical simulations.
         wavelength_span (float): Total span of wavelengths to consider in meters.
-        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of wavelength.
+        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of angular frequency.
     """
 
     def __init__(self,
@@ -37,7 +37,7 @@ class Pulse(ABC):
             repetition_rate (float): Repetition rate of the pulse in Hertz.
             number_of_grid_points (int): Number of grid points for numerical simulations.
             wavelength_span (float): Total span of wavelengths to consider in meters.
-            refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of wavelength.
+            refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of angular frequency.
         """
         
         assert number_of_grid_points > 0, "Number of grid points must be positive."
@@ -227,7 +227,7 @@ class Pulse(ABC):
         Returns:
             float: Corresponding frequency in Hertz.
         """
-        return c / (self.refractive_index_function(wavelength) * wavelength)
+        return c / (self.refractive_index_function(2*np.pi*c/wavelength) * wavelength)
     
     def convert_frequency_to_wavelength(self, frequency: float) -> float:
         """
@@ -240,7 +240,7 @@ class Pulse(ABC):
         Returns:
             float: The corresponding wavelength in meters.
         """
-        return c / (self.refractive_index_function(c / frequency) * frequency)
+        return c / (self.refractive_index_function(2*np.pi*frequency) * frequency)
     
     def get_frequency_bandwidth(self) -> float:
         """
@@ -252,8 +252,8 @@ class Pulse(ABC):
         """
         # Numerically approximate the derivative of the refractive index function
         delta_lambda = 1e-9  # small change in wavelength, in meters
-        n_lambda = self.refractive_index_function(self.wavelength_central)
-        n_lambda_delta = self.refractive_index_function(self.wavelength_central + delta_lambda)
+        n_lambda = self.refractive_index_function(2*np.pi*c/self.wavelength_central)
+        n_lambda_delta = self.refractive_index_function(2*np.pi*c/self.wavelength_central + delta_lambda)
         dn_dlambda = (n_lambda_delta - n_lambda) / delta_lambda
 
         # Calculate the frequency bandwidth using the given formula
@@ -276,8 +276,8 @@ class Pulse(ABC):
         Returns:
             tuple[np.ndarray[float], np.ndarray[complex]]: The frequency grid and corresponding amplitude values.
         """
-        frequency_grid = self.convert_wavelength_to_frequency(self.wavelength_grid)
-        frequency_amplitude = self.wavelength_amplitude
+        frequency_grid = self.convert_wavelength_to_frequency(wavelength_grid)
+        frequency_amplitude = wavelength_amplitude
         f = interp1d(frequency_grid, frequency_amplitude, fill_value=(0, 0), bounds_error=False)
         # use interpolation function returned by `interp1d`
         frequency_start = frequency_grid[-1]
@@ -301,7 +301,7 @@ class Pulse(ABC):
             tuple[np.ndarray[float], np.ndarray[complex]]: The new wavelength grid and corresponding amplitude values.
         """
         wavelength_grid = self.convert_frequency_to_wavelength(frequency_grid)
-        wavelength_amplitude = self.frequency_amplitude
+        wavelength_amplitude = frequency_amplitude
         f = interp1d(wavelength_grid, wavelength_amplitude, fill_value=(0, 0), bounds_error=False)
         # use interpolation function returned by `interp1d`
         wavelength_start = wavelength_grid[-1]
@@ -343,7 +343,7 @@ class Pulse(ABC):
         Returns:
             float: The phase shift in radians.
         """
-        return (2 * np.pi / self.wavelength_central) * self.refractive_index_function(self.wavelength_central) * optical_path_difference
+        return (2 * np.pi / self.wavelength_central) * self.refractive_index_function(2*np.pi*c/self.wavelength_central) * optical_path_difference
 
     def distort_pulse_spectrum(self, bandwidth_omega: float, distortion_function: Callable[[np.ndarray[complex]], np.ndarray[complex]]) -> np.ndarray[complex]:
         """

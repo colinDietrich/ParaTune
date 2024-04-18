@@ -1,8 +1,6 @@
-import jax.numpy as np
-import jax
-from functools import partial
+import numpy as np
 from scipy.constants import c
-from typing import List, Optional, Union, Callable
+from typing import List, Optional, Callable
 from random import choices, randint
 from abc import ABC, abstractmethod
 from ParaTune.media.data import *
@@ -87,7 +85,7 @@ class Crystal(ABC):
         if(length is not None):
             self.number_of_domains = (int)(self.length/self.domain_width) + 1
         elif(self.maximum_length is not None and self.minimum_length is not None):
-            self.number_of_domains = randint(jax.lax.ceil(minimum_length/self.domain_width), jax.lax.floor(maximum_length/self.domain_width))
+            self.number_of_domains = int(minimum_length/self.domain_width) + 1
             self.length = self.number_of_domains*self.domain_width
         else:
             raise ValueError('Length of crystal missing.')
@@ -228,7 +226,6 @@ class Crystal(ABC):
         # Since the original domain values are real, take the real part of the IFFT result
         return np.real(domain_values_approx)/np.max(np.real(domain_values_approx))
 
-    @partial(jax.jit, static_argnums=(0,))
     def poling_function(self, domain_values: List[int]) -> np.ndarray:
         """
         Constructs a spatial representation of the crystal's domain structure using the provided domain values.
@@ -236,9 +233,6 @@ class Crystal(ABC):
         This method applies a vectorized mapping to extend each domain value across its corresponding domain
         width as defined by the 'fill' attribute, effectively creating a piecewise constant function that
         represents the orientation of the electric field in each domain along the crystal's z-axis.
-
-        The JAX `jit` decorator is used to just-in-time compile the function for faster execution, and `vmap`
-        is utilized to efficiently apply the 'extend' operation across all domain values.
 
         Parameters:
             domain_values (List[int]): A list of integers representing the orientation of the electric field
@@ -249,9 +243,10 @@ class Crystal(ABC):
             np.ndarray: A flattened numpy array representing the spatial domain structure of the crystal along
                         the z-axis, with each domain's electric field orientation extended across its width.
         """
-        extend = lambda x : x*self.fill
-        extend_vmap = jax.vmap(extend)
-        return extend_vmap(domain_values).flatten()
+        extended_domains = []
+        for value in domain_values:
+            extended_domains.append(value * self.fill)
+        return np.concatenate(extended_domains).flatten()
 
     def sellmeier(self, A: List[float]) -> Callable[[float], float]:
         """

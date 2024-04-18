@@ -14,7 +14,7 @@ class GaussianPulse(Pulse):
         repetition_rate (float): Repetition rate of the Gaussian pulse in Hertz.
         number_of_grid_points (int): Number of grid points for numerical simulations.
         wavelength_span (float): Total span of wavelengths to consider in meters.
-        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of wavelength.
+        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of angular frequency.
     """
 
     def __init__(self, 

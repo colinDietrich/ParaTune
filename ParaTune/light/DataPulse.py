@@ -15,7 +15,7 @@ class DataPulse(Pulse):
         repetition_rate (float): Repetition rate of the pulse in Hertz.
         number_of_grid_points (int): Number of grid points for numerical simulations.
         wavelength_span (float): Total span of wavelengths to consider in meters.
-        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of wavelength.
+        refractive_index_function (Callable[[float], float]): Function to calculate the refractive index as a function of angular frequency.
         file_name (str): Name of the CSV file without the extension, containing the pulse data.
     """
 

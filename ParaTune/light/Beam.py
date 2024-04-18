@@ -13,7 +13,7 @@ class Beam:
         num_points_x (int): The number of points in the x direction.
         height (float): The height of the beam.
         num_points_y (int): The number of points in the y direction.
-        wavelength_grid (List[float]): The grid of wavelengths.
+        angular_frequency_grid (List[float]): The grid of angular frequencies.
         wave_number_func (Callable[[List[float]], List[float]]): The function to calculate wave numbers.
         refractive_index_func (Callable[[List[float]], List[float]]): The function to calculate refractive indices.
         beam_waist (float): The beam waist.
@@ -31,7 +31,7 @@ class Beam:
                  num_points_x: int, 
                  height: float, 
                  num_points_y: int,
-                 wavelength_grid: List[float], 
+                 angular_frequency_grid: List[float], 
                  wave_number_func: Callable[[List[float]], List[float]],
                  refractive_index_func: Callable[[List[float]], List[float]], 
                  beam_waist: float,
@@ -47,24 +47,26 @@ class Beam:
         self.num_points_x = num_points_x
         self.height = height
         self.num_points_y = num_points_y
-        self.wavelength_grid = wavelength_grid
+        self.angular_frequency_grid = angular_frequency_grid
         self.wave_number_func = wave_number_func
         self.refractive_index_func = refractive_index_func
         self.beam_waist = beam_waist
         self.mode = mode
         self.initial_position = initial_position
+        self.max_azimuthal_index = max_azimuthal_index
+        self.max_radial_index = max_radial_index
 
         self.x = np.linspace(-self.width/2, self.width/2, self.num_points_x)
         self.y = np.linspace(-self.height/2, self.height/2, self.num_points_y)
-        self.XX, self.YY, self.WW = np.meshgrid(self.x, self.y, self.wavelength_grid, indexing='ij')
+        self.XX, self.YY, self.WW = np.meshgrid(self.x, self.y, self.angular_frequency_grid, indexing='ij')
 
-        ones_3d = np.ones((self.num_points_x, self.num_points_y, len(self.wavelength_grid)))
-        self.KK = np.multiply(ones_3d, self.wave_number_func(self.wavelength_grid))
-        self.NN = np.multiply(ones_3d, self.refractive_index_func(self.wavelength_grid))
+        ones_3d = np.ones((self.num_points_x, self.num_points_y, len(self.angular_frequency_grid)))
+        self.KK = np.multiply(ones_3d, self.wave_number_func(self.angular_frequency_grid))
+        self.NN = np.multiply(ones_3d, self.refractive_index_func(self.angular_frequency_grid))
 
         if max_azimuthal_index is None or max_radial_index is None:
             if all(v is not None for v in [core_refractive_index, cladding_refractive_index, core_radius]):
-                self.max_azimuthal_index = self.max_radial_index = self.get_max_modes_number(core_refractive_index, cladding_refractive_index, core_radius, self.wavelength_grid)
+                self.max_azimuthal_index = self.max_radial_index = self.get_max_modes_number(core_refractive_index, cladding_refractive_index, core_radius, self.angular_frequency_grid)
                 print(f'Max number of modes propagating in medium = {self.max_azimuthal_index}')
             else:
                 raise ValueError('Insufficient parameters to determine the maximum number of modes.')
@@ -121,9 +123,10 @@ class Beam:
         """
         hx = hermite(n)(self.x * np.sqrt(2) / self.beam_waist)
         hy = hermite(m)(self.y * np.sqrt(2) / self.beam_waist)
-        Hx = np.outer(hx, np.ones_like(self.y))
-        Hy = np.outer(np.ones_like(self.x), hy)
+        Hx = np.outer(hx, np.ones_like(self.y)).reshape((self.num_points_x, self.num_points_y, 1))
+        Hy = np.outer(np.ones_like(self.x), hy).reshape((self.num_points_x, self.num_points_y, 1))
         
         amplitude = np.exp(-(self.XX**2 + self.YY**2) / self.beam_waist**2)
         phase = np.exp(-1j * (n + m + 1) * np.arctan(self.initial_position / (self.KK / 2 * self.beam_waist**2 * self.NN)))
+        
         return Hx * Hy * amplitude * phase
