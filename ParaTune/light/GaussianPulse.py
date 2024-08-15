@@ -1,6 +1,7 @@
 import numpy as np
 from ParaTune.light.Pulse import Pulse
 from typing import Callable
+from scipy.constants import c, pi
 
 class GaussianPulse(Pulse):
     """
@@ -42,12 +43,26 @@ class GaussianPulse(Pulse):
         Returns:
             np.ndarray: Array of complex numbers representing the amplitude of the Gaussian pulse across the wavelength grid.
         """
-        wavelength_amplitude = np.zeros_like(self.wavelength_grid, dtype=complex)
-        amplitude = np.sqrt(self.average_photons_per_pulse)
-        central_omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_central)
-        bandwidth_omega = 2 * np.pi * self.get_frequency_bandwidth()
-        omega = 2 * np.pi * self.convert_wavelength_to_frequency(self.wavelength_grid)
-        wavelength_amplitude += amplitude * np.exp(-((omega - central_omega) ** 2) / (2 * bandwidth_omega ** 2))
+        # Define constants for Gaussian formula
+        sigma = self.wavelength_bandwidth / 2.35482
+
+        # Calculate the amplitude constant A
+        A = np.sqrt(self.energy_per_pulse)      
+
+        # Calculate the Gaussian profile for amplitude
+        wavelength_amplitude = np.exp(-((self.wavelength_grid - self.wavelength_central) ** 2) / (2 * sigma**2))
+
+        # Normalize the Gaussian profile
+        wavelength_amplitude /= np.sum(np.abs(wavelength_amplitude))
+
+        # Calculate the wavelngth step size
+        wavelength_step = np.abs(self.wavelength_grid[1]-self.wavelength_grid[0])
+
+        # Scale by the square root of normalized values
+        wavelength_amplitude = np.sqrt(wavelength_amplitude/self.wavelength_bandwidth)
+
+        # Multiply by the amplitude constant to scale to the desired amplitude
+        wavelength_amplitude *= A
         return wavelength_amplitude
 
     @property

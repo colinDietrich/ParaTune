@@ -50,7 +50,7 @@ class SHGCrystal(Crystal):
         # Initialization crystal's domain width (if it is not set yet)
         if(domain_width is None): 
             dk = self.wavevector_mismatch()(self.angular_frequency_central, self.angular_frequency_central, self.angular_frequency_central*2)
-            domain_width = np.abs(np.pi / dk) 
+            domain_width = np.abs(np.pi / dk / 2) 
 
         super().__init__(configuration, 
                         medium, 

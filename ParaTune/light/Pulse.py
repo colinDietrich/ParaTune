@@ -283,7 +283,18 @@ class Pulse(ABC):
         frequency_start = frequency_grid[-1]
         frequency_end = frequency_grid[0]
         frequency_grid_new = np.linspace(frequency_start, frequency_end, self.number_of_grid_points) # frequency grid [Hz]
-        return frequency_grid_new, f(frequency_grid_new)
+        frequency_amplitude_new = f(frequency_grid_new)
+        # Calculate the amplitude constant A
+        A = np.sqrt(self.energy_per_pulse)  
+        # Normalize the amplitude profile
+        frequency_amplitude_new /= np.sum(np.abs(frequency_amplitude_new))
+        # Calculate the frequency step size
+        frequency_step = np.abs(frequency_grid_new[1]-frequency_grid_new[0]) * 2*np.pi
+        # Scale by the square root of normalized values
+        frequency_amplitude_new = np.sqrt(frequency_amplitude_new/self.frequency_bandwidth)
+        # Multiply by the amplitude constant to scale to the desired amplitude
+        frequency_amplitude_new *= A
+        return frequency_grid_new, frequency_amplitude_new
     
     def frequency_to_wavelength_grid(self, 
                                      frequency_grid: np.ndarray[float], 
@@ -307,7 +318,18 @@ class Pulse(ABC):
         wavelength_start = wavelength_grid[-1]
         wavelength_end = wavelength_grid[0]
         wavelength_grid_new = np.linspace(wavelength_start, wavelength_end, self.number_of_grid_points) # frequency grid [Hz]
-        return wavelength_grid_new, f(wavelength_grid_new)
+        wavelength_amplitude_new = f(wavelength_grid_new)
+        # Calculate the amplitude constant A
+        A = np.sqrt(self.energy_per_pulse)  
+        # Normalize the amplitude profile
+        wavelength_amplitude_new /= np.sum(np.abs(wavelength_amplitude_new))
+        # Calculate the wavelngth step size
+        wavelength_step = np.abs(self.wavelength_grid[1]-self.wavelength_grid[0])
+        # Scale by the square root of normalized values
+        wavelength_amplitude_new = np.sqrt(wavelength_amplitude_new/self.wavelength_bandwidth)
+        # Multiply by the amplitude constant to scale to the desired amplitude
+        wavelength_amplitude_new *= A
+        return wavelength_grid_new, wavelength_amplitude_new
     
     def get_time_amplitude(self) -> tuple[np.ndarray[float], np.ndarray[complex]]:
         """
@@ -323,10 +345,8 @@ class Pulse(ABC):
         # The frequencies array helps to set the correct time scale
         # Calculate time step (assuming frequencies are evenly spaced)
         frequency_spacing = self.frequency_grid[1] - self.frequency_grid[0]
-        time_step = 1 / (len(self.frequency_grid) * frequency_spacing)
-
         # Generate time vector
-        time_grid = np.fft.fftfreq(len(self.frequency_grid), d=time_step)
+        time_grid = np.fft.fftfreq(len(self.frequency_grid), d=frequency_spacing)
 
         return time_grid, time_amplitude
 

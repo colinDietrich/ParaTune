@@ -3,6 +3,7 @@ from scipy.constants import c
 from typing import List, Optional, Callable
 from random import choices, randint
 from abc import ABC, abstractmethod
+import math
 from ParaTune.media.data import *
 
 class Crystal(ABC):
@@ -80,12 +81,16 @@ class Crystal(ABC):
         self.minimum_length = minimum_length # crystsl's minimum length [m]
         self.domain_values_custom = domain_values_custom # custom orientaion of the electric dipole of each domain
         self.domain_bounds_custom = domain_bounds_custom # custom positions of the boundaries of each domain [m]
+        # variables for genetic algorithn
+        self.signal_spectrum = None
+        self.idler_spectrum = None
+        self.level = 1
         
         # initialization of crystal's length
         if(length is not None):
             self.number_of_domains = (int)(self.length/self.domain_width) + 1
         elif(self.maximum_length is not None and self.minimum_length is not None):
-            self.number_of_domains = int(minimum_length/self.domain_width) + 1
+            self.number_of_domains = randint(math.ceil(self.minimum_length/self.domain_width), math.floor(self.maximum_length/self.domain_width))
             self.length = self.number_of_domains*self.domain_width
         else:
             raise ValueError('Length of crystal missing.')
@@ -131,6 +136,23 @@ class Crystal(ABC):
     def wavevector_mismatch(self):
         pass
 
+    def update(self, level=1) -> None:
+        if(level != self.level):
+            self.level = level
+            self.domain_width = self.domain_width/2
+            self.domain_values = self.double_length_array(self.domain_values)
+        self.number_of_domains = len(self.domain_values)
+        # length of crystal
+        self.length = self.number_of_domains*self.domain_width
+        # array of positions of each domain
+        self.z_grid = np.arange(-self.length/2, -self.length/2 + (self.number_of_domains + 1) * self.domain_width, self.domain_width)
+        self.number_grid_points_z = len(self.z_grid)
+
+    def double_length_array(self, array) -> np.ndarray:
+        doubled_array = []
+        for element in array:
+            doubled_array.extend([element, element])
+        return doubled_array
 
     def update_crystal_parameters(self) -> None:
         """
@@ -298,11 +320,11 @@ class Crystal(ABC):
         pmf = 0
 
         # Convert the domain values to a NumPy array for processing
-        parameters = np.array(self.poling_function(np.array(self.domain_values)), dtype=np.float32)[:len(self.z_grid)]
+        parameters = np.array(self.domain_values)
 
         # Loop over each domain to calculate and sum its contribution to the total PMF
         for idz in range(len(parameters) - 1):  # Subtract 1 to avoid index out of range since we're accessing idz+1
-            pmf += parameters[idz] * pmf_one_domain(self.z_grid[idz], self.z_grid[idz + 1])
+            pmf += parameters[idz] * pmf_one_domain(self.domain_bounds[idz], self.domain_bounds[idz + 1])
 
         # Return the array of wave numbers and the corresponding PMF values
         return wave_number_array, pmf
